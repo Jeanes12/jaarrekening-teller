@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{TITEL}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@500;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  /* Huisstijl adp-accountants.be */
+  :root {
+    --blauw: #22559a;
+    --blauw-diep: #1b4680;
+    --navy: #16163f;
+    --blauw-licht: #a3c6cf;
+    --blauw-zacht: #c5d3ea;
+    --goud: #d3b574;
+    --tekst: #333333;
+    --gedempt: #69727d;
+    --wit: #ffffff;
+    --waarschuwing-achtergrond: #fbf3dc;
+    --waarschuwing-tekst: #6d4d00;
+    --serif: "Merriweather", Georgia, "Times New Roman", serif;
+    --sans: "Open Sans", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --cijfers: "Montserrat", "Open Sans", -apple-system, "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--blauw); }
+  @media (min-width: 1600px) { html { font-size: 20px; } }   /* groter op een tv-scherm */
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--tekst);
+    font-family: var(--sans);
+    background:
+      linear-gradient(168deg, var(--blauw) 0 58%, var(--blauw-diep) 58% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(1rem, 3vw, 2.5rem) 1rem;
+  }
+  main {
+    width: 100%;
+    max-width: 52rem;
+    background: var(--wit);
+    border-top: 5px solid var(--goud);
+    border-radius: 4px;
+    box-shadow: 0 18px 45px rgba(22, 22, 63, .28);
+    padding: clamp(1.5rem, 4vw, 3rem) clamp(1.25rem, 4vw, 3rem) clamp(1.25rem, 3vw, 2rem);
+    text-align: center;
+  }
+  .kop {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: .72rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--blauw);
+    margin: 0 0 .75rem;
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(1.45rem, 3.4vw, 2.2rem);
+    line-height: 1.25;
+    color: var(--navy);
+  }
+  .ondertitel {
+    margin: .5rem auto 0;
+    max-width: 34rem;
+    color: var(--gedempt);
+    font-size: clamp(.9rem, 1.7vw, 1rem);
+  }
+  .aantal {
+    margin: clamp(.5rem, 2.5vw, 1.25rem) 0 0;
+    font-family: var(--cijfers);
+    font-size: clamp(6.5rem, 26vw, 15rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -.03em;
+    color: var(--navy);
+    font-variant-numeric: tabular-nums;
+    transition: color .4s ease;
+  }
+  .aantal.klaar { color: var(--blauw); }
+  .nul-boodschap {
+    display: none;
+    margin: .5rem 0 0;
+    font-family: var(--serif);
+    font-size: clamp(1rem, 2.4vw, 1.35rem);
+    color: var(--blauw);
+  }
+
+  /* Quote */
+  .citaat {
+    margin: clamp(1.25rem, 3vw, 2rem) auto 0;
+    max-width: 38rem;
+    padding: 1rem 1.25rem 1.1rem;
+    border-left: 3px solid var(--goud);
+    background: #f7f9fc;
+    text-align: left;
+    transition: opacity .45s ease;
+  }
+  .citaat.wissel { opacity: 0; }
+  .citaat p {
+    margin: 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(1rem, 2.1vw, 1.2rem);
+    line-height: 1.55;
+    color: var(--navy);
+  }
+  .citaat p::before { content: "\201C"; color: var(--goud); font-weight: 400; margin-right: .1em; }
+  .citaat p::after { content: "\201D"; color: var(--goud); font-weight: 400; margin-left: .1em; }
+  .citaat cite {
+    display: block;
+    margin-top: .5rem;
+    font-style: normal;
+    font-size: .8rem;
+    letter-spacing: .05em;
+    color: var(--gedempt);
+  }
+  .citaat cite:empty { display: none; }
+  .citaat:has(p:empty) { display: none; }
+
+  /* Aftelklok */
+  .aftel {
+    margin: clamp(1.5rem, 3.5vw, 2.25rem) 0 0;
+  }
+  .aftel .label {
+    margin: 0 0 .75rem;
+    font-family: var(--serif);
+    font-size: clamp(.95rem, 1.9vw, 1.1rem);
+    color: var(--navy);
+  }
+  .aftel .blokken {
+    display: flex;
+    justify-content: center;
+    gap: clamp(.4rem, 1.5vw, .9rem);
+    flex-wrap: wrap;
+  }
+  .aftel .blok {
+    min-width: clamp(4.1rem, 11vw, 6rem);
+    padding: .7rem .5rem .55rem;
+    background: var(--blauw);
+    color: var(--wit);
+    border-radius: 4px;
+    border-bottom: 3px solid var(--goud);
+  }
+  .aftel .blok b {
+    display: block;
+    font-family: var(--cijfers);
+    font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .aftel .blok span {
+    display: block;
+    margin-top: .35rem;
+    font-size: .68rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--blauw-licht);
+  }
+  .aftel .verstreken {
+    display: none;
+    margin: 0;
+    padding: .7rem 1rem;
+    background: var(--blauw-zacht);
+    color: var(--navy);
+    border-radius: 4px;
+    font-family: var(--serif);
+  }
+  .aftel.voorbij .blokken, .aftel.voorbij .label { display: none; }
+  .aftel.voorbij .verstreken { display: block; }
+
+  .bijgewerkt {
+    margin: clamp(1.25rem, 3vw, 1.75rem) 0 0;
+    color: var(--gedempt);
+    font-size: .9rem;
+  }
+  .waarschuwing {
+    display: none;
+    margin: .8rem auto 0;
+    max-width: 30rem;
+    padding: .6rem .9rem;
+    border-radius: 4px;
+    background: var(--waarschuwing-achtergrond);
+    color: var(--waarschuwing-tekst);
+    font-size: .88rem;
+  }
+  footer {
+    margin-top: clamp(1.25rem, 3vw, 1.75rem);
+    padding-top: .9rem;
+    border-top: 1px solid var(--blauw-zacht);
+    color: var(--gedempt);
+    font-size: .78rem;
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="kop">ADP-Accountants</p>
+  <h1>{{TITEL}}</h1>
+  <p class="ondertitel">{{ONDERTITEL}}</p>
+
+  <p class="aantal" id="aantal">{{AANTAL}}</p>
+  <p class="nul-boodschap" id="nul-boodschap">{{NUL_BOODSCHAP}}</p>
+
+  <blockquote class="citaat" id="citaat">
+    <p id="citaat-tekst">{{CITAAT}}</p>
+    <cite id="citaat-bron">{{CITAAT_BRON}}</cite>
+  </blockquote>
+
+  <section class="aftel" id="aftel" data-tot="{{AFTEL_ISO}}">
+    <p class="label">Nog <span id="aftel-tekst">{{AFTEL_TEKST}}</span></p>
+    <div class="blokken">
+      <div class="blok"><b id="d">–</b><span>dagen</span></div>
+      <div class="blok"><b id="u">–</b><span>uren</span></div>
+      <div class="blok"><b id="m">–</b><span>minuten</span></div>
+      <div class="blok"><b id="s">–</b><span>seconden</span></div>
+    </div>
+    <p class="verstreken">{{AFTEL_VERSTREKEN}}</p>
+  </section>
+
+  <p class="bijgewerkt">Laatst bijgewerkt: <span id="bijgewerkt-tekst">{{BIJGEWERKT_TEKST}}</span></p>
+  <p class="waarschuwing" id="waarschuwing"></p>
+
+  <footer>Bron: AdminPulse, taak &ldquo;{{TAAKNAAM}}&rdquo; &middot; wordt elk uur opnieuw geteld</footer>
+</main>
+
+<script>
+(function () {
+  var VERVERS_MINUTEN = {{VERVERS_MINUTEN}};
+  var VEROUDERD_NA_UUR = {{VEROUDERD_NA_UUR}};
+  var bijgewerkt = new Date("{{BIJGEWERKT_ISO}}");
+
+  var elAantal = document.getElementById("aantal");
+  var elNul = document.getElementById("nul-boodschap");
+  var elTijd = document.getElementById("bijgewerkt-tekst");
+  var elWaarschuwing = document.getElementById("waarschuwing");
+  var elCitaat = document.getElementById("citaat");
+  var elCitaatTekst = document.getElementById("citaat-tekst");
+  var elCitaatBron = document.getElementById("citaat-bron");
+  var elAftel = document.getElementById("aftel");
+  var aftelTot = elAftel.getAttribute("data-tot") ? new Date(elAftel.getAttribute("data-tot")) : null;
+
+  function toon(aantal) {
+    elAantal.textContent = aantal;
+    var klaar = Number(aantal) === 0;
+    elAantal.classList.toggle("klaar", klaar);
+    elNul.style.display = klaar ? "block" : "none";
+  }
+
+  function toonCitaat(tekst, bron) {
+    if (tekst === elCitaatTekst.textContent && (bron || "") === elCitaatBron.textContent) return;
+    elCitaat.classList.add("wissel");
+    setTimeout(function () {
+      elCitaatTekst.textContent = tekst || "";
+      elCitaatBron.textContent = bron || "";
+      elCitaat.classList.remove("wissel");
+    }, 450);
+  }
+
+  function twee(n) { return (n < 10 ? "0" : "") + n; }
+
+  function tikAftel() {
+    if (!aftelTot || isNaN(aftelTot.getTime())) { elAftel.style.display = "none"; return; }
+    elAftel.style.display = "";
+    var rest = Math.floor((aftelTot.getTime() - Date.now()) / 1000);
+    if (rest <= 0) { elAftel.classList.add("voorbij"); return; }
+    elAftel.classList.remove("voorbij");
+    document.getElementById("d").textContent = Math.floor(rest / 86400);
+    document.getElementById("u").textContent = twee(Math.floor(rest % 86400 / 3600));
+    document.getElementById("m").textContent = twee(Math.floor(rest % 3600 / 60));
+    document.getElementById("s").textContent = twee(rest % 60);
+  }
+
+  function controleerOuderdom() {
+    var uren = (Date.now() - bijgewerkt.getTime()) / 36e5;
+    if (isNaN(uren) || uren < VEROUDERD_NA_UUR) {
+      elWaarschuwing.style.display = "none";
+      return;
+    }
+    var tekst = uren < 48
+      ? "Deze gegevens zijn " + Math.floor(uren) + " uur oud"
+      : "Deze gegevens zijn " + Math.floor(uren / 24) + " dagen oud";
+    elWaarschuwing.textContent = tekst + " – de automatische update is mogelijk niet gelopen.";
+    elWaarschuwing.style.display = "block";
+  }
+
+  function ververs() {
+    fetch("data.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        toon(d.aantal_open);
+        toonCitaat(d.citaat, d.citaat_bron);
+        elTijd.textContent = d.bijgewerkt_tekst;
+        bijgewerkt = new Date(d.bijgewerkt);
+        if (d.aftel_tot) { aftelTot = new Date(d.aftel_tot); }
+        controleerOuderdom();
+        tikAftel();
+      })
+      .catch(function () { /* geen verbinding: laat het laatste cijfer staan */ });
+  }
+
+  toon(elAantal.textContent.trim());
+  controleerOuderdom();
+  tikAftel();
+  setInterval(tikAftel, 1000);
+  setInterval(ververs, VERVERS_MINUTEN * 60 * 1000);
+  setInterval(controleerOuderdom, 60 * 1000);
+})();
+</script>
+</body>
+</html>
