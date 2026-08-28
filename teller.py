@@ -2,9 +2,9 @@
 """
 Teller "nog neer te leggen jaarrekeningen".
 
-Haalt via de AdminPulse-API alle hoofdtaken (met hun subtaken) op, telt de
-subtaken met de ingestelde naam (standaard "Neerlegging jaarrekening") die nog
-niet op status "Afgewerkt" staan, en schrijft:
+Haalt via de AdminPulse-API alle hoofdtaken (met hun subtaken) op, telt binnen
+de hoofdtaak "Jaarrekening en AV" de subtaken "Neerleggen jaarrekening" die nog
+niet op status "Klaar" staan (zoals de filter op het Taakbord), en schrijft:
 
   site/index.html     de webpagina met het cijfer, de quote en de aftelklok
   site/data.json      dezelfde gegevens als data (de pagina ververst zich hiermee)
@@ -97,12 +97,17 @@ def lees_instellingen() -> dict:
             sys.exit("FOUT: 'tot' bij [aftelklok] moet het formaat dd/mm/jjjj uu:mm:ss hebben.")
 
     ref = (f.get("referentiejaar", "") or "").strip()
+    deadline_op = (f.get("deadline_op", "hoofdtaak") or "hoofdtaak").strip().lower()
+    if deadline_op not in ("hoofdtaak", "subtaak"):
+        sys.exit("FOUT: 'deadline_op' in config.ini moet 'hoofdtaak' of 'subtaak' zijn.")
     return {
-        "taaknaam": f.get("taaknaam", "Neerlegging jaarrekening").strip(),
+        "hoofdtaak": (f.get("hoofdtaak", "") or "").strip(),
+        "taaknaam": f.get("taaknaam", "Neerleggen jaarrekening").strip(),
         "vergelijking": f.get("vergelijking", "exact").strip().lower(),
         "referentiejaar": int(ref) if ref else None,
         "deadline_van": deadline_van,
         "deadline_tot": deadline_tot,
+        "deadline_op": deadline_op,
         "api_vanaf": api_vanaf,
         "api_tot": api_tot,
         "titel": p.get("titel", "Nog neer te leggen jaarrekeningen").strip(),
@@ -194,10 +199,10 @@ def normaliseer(tekst) -> str:
     return " ".join(str(tekst or "").lower().split())
 
 
-def naam_past(taak: dict, inst: dict) -> bool:
-    doel = normaliseer(inst["taaknaam"])
+def naam_past(taak: dict, gezochte_naam: str, vergelijking: str) -> bool:
+    doel = normaliseer(gezochte_naam)
     kandidaten = {normaliseer(taak.get("templateName")), normaliseer(taak.get("name"))}
-    if inst["vergelijking"] == "bevat":
+    if vergelijking == "bevat":
         return any(doel in k for k in kandidaten if k)
     return doel in kandidaten
 
@@ -227,11 +232,18 @@ def binnen_periode(taak: dict, inst: dict) -> bool:
 def tel(taken: list, inst: dict) -> dict:
     open_taken, afgewerkt = [], 0
     per_jaar, per_status = {}, {0: 0, 1: 0, 2: 0}
-    gezien_namen, buiten_periode = {}, 0
+    gezien_namen, gezien_hoofdtaken, buiten_periode = {}, {}, 0
+    hoofdtaken_gefilterd = 0
 
     for hoofdtaak in taken:
+        hoofdnaam = hoofdtaak.get("templateName") or hoofdtaak.get("name") or ""
+        gezien_hoofdtaken[hoofdnaam] = gezien_hoofdtaken.get(hoofdnaam, 0) + 1
+
         if hoofdtaak.get("inapplicable"):
             continue
+        if inst["hoofdtaak"] and not naam_past(hoofdtaak, inst["hoofdtaak"], inst["vergelijking"]):
+            continue
+        hoofdtaken_gefilterd += 1
         jaar = hoofdtaak.get("referenceYear")
         if inst["referentiejaar"] and jaar != inst["referentiejaar"]:
             continue
@@ -241,14 +253,17 @@ def tel(taken: list, inst: dict) -> dict:
             naam = s.get("templateName") or s.get("name") or ""
             gezien_namen[naam] = gezien_namen.get(naam, 0) + 1
 
-        passend = [s for s in subtaken if naam_past(s, inst)]
-        if not passend and naam_past(hoofdtaak, inst):
+        passend = [s for s in subtaken if naam_past(s, inst["taaknaam"], inst["vergelijking"])]
+        if not passend and not inst["hoofdtaak"] \
+                and naam_past(hoofdtaak, inst["taaknaam"], inst["vergelijking"]):
             passend = [hoofdtaak]              # de neerlegging is zelf een hoofdtaak
 
         for t in passend:
             if t.get("inapplicable"):
                 continue
-            if not binnen_periode(t, inst):
+            # Periode: standaard op de deadline van de hoofdtaak (zoals het Taakbord in AdminPulse)
+            drager = hoofdtaak if inst["deadline_op"] == "hoofdtaak" else t
+            if not binnen_periode(drager, inst):
                 buiten_periode += 1
                 continue
             status = t.get("status")
@@ -258,7 +273,8 @@ def tel(taken: list, inst: dict) -> dict:
             else:
                 open_taken.append({
                     "relatie": hoofdtaak.get("relationUniqueIdentifier"),
-                    "deadline": (t.get("deadline") or "")[:10],
+                    "deadline_hoofdtaak": (hoofdtaak.get("deadline") or "")[:10],
+                    "deadline_subtaak": (t.get("deadline") or "")[:10],
                     "status": STATUS_NAMEN.get(status, str(status)),
                     "jaar": jaar,
                 })
@@ -271,9 +287,17 @@ def tel(taken: list, inst: dict) -> dict:
         "per_jaar": dict(sorted(per_jaar.items())),
         "per_status": {STATUS_NAMEN.get(k, str(k)): v for k, v in per_status.items()},
         "buiten_periode": buiten_periode,
+        "hoofdtaken_gefilterd": hoofdtaken_gefilterd,
         "open_taken": open_taken,
         "gezien_namen": gezien_namen,
+        "gezien_hoofdtaken": gezien_hoofdtaken,
     }
+
+
+def toon_namenlijst(titel: str, namen: dict, maximum: int = 25) -> None:
+    print(titel)
+    for naam, n in sorted(namen.items(), key=lambda x: -x[1])[:maximum]:
+        print(f"    {n:5d}  {naam or '(zonder naam)'}")
 
 
 # --------------------------------------------------------------------------- #
@@ -374,8 +398,10 @@ def schrijf_uitvoer(telling: dict, inst: dict, citaat: dict, nu: datetime) -> No
         "citaat_bron": citaat["bron"],
         "aftel_tot": inst["aftel_tot"].isoformat() if inst["aftel_tot"] else None,
         "filter": {
+            "hoofdtaak": inst["hoofdtaak"] or None,
             "taaknaam": inst["taaknaam"],
             "referentiejaar": inst["referentiejaar"],
+            "deadline_op": inst["deadline_op"],
             "deadline_van": inst["deadline_van"].strftime("%d/%m/%Y") if inst["deadline_van"] else None,
             "deadline_tot": inst["deadline_tot"].strftime("%d/%m/%Y") if inst["deadline_tot"] else None,
         },
@@ -416,8 +442,9 @@ def main() -> None:
     if inst["deadline_van"] or inst["deadline_tot"]:
         periode = (f"deadline van {inst['deadline_van'].strftime('%d/%m/%Y') if inst['deadline_van'] else '...'}"
                    f" tot {inst['deadline_tot'].strftime('%d/%m/%Y') if inst['deadline_tot'] else '...'}")
-    print(f"Filter: taak '{inst['taaknaam']}' ({inst['vergelijking']}), "
-          f"referentiejaar {inst['referentiejaar'] or 'alle'}, {periode}")
+    print(f"Filter: hoofdtaak '{inst['hoofdtaak'] or '(alle)'}', subtaak '{inst['taaknaam']}' "
+          f"({inst['vergelijking']}), referentiejaar {inst['referentiejaar'] or 'alle'}, "
+          f"{periode} (op de {inst['deadline_op']})")
     print(f"Ophalen bij AdminPulse: deadline vanaf {api_datum(inst['api_vanaf']) or 'geen grens'} "
           f"tot {api_datum(inst['api_tot']) or 'geen grens'}")
 
@@ -430,17 +457,30 @@ def main() -> None:
 
     print(f"\nRESULTAAT: {telling['aantal_open']} nog niet neergelegd, "
           f"{telling['aantal_afgewerkt']} afgewerkt.")
+    print(f"  hoofdtaken die aan de hoofdtaakfilter voldoen: {telling['hoofdtaken_gefilterd']}")
     print(f"  per status: {telling['per_status']}")
     print(f"  open per referentiejaar: {telling['per_jaar']}")
     if telling["buiten_periode"]:
         print(f"  niet meegeteld omdat de deadline buiten de periode valt: {telling['buiten_periode']}")
+    if telling["open_taken"]:
+        print("  deadlines van de open neerleggingen (hoofdtaak / subtaak / status):")
+        for t in sorted(telling["open_taken"], key=lambda x: x["deadline_hoofdtaak"])[:150]:
+            print(f"    {t['deadline_hoofdtaak'] or '-':10}  {t['deadline_subtaak'] or '-':10}  {t['status']}")
+
+    # Ter controle: welke namen komen voor? Handig als het cijfer niet klopt.
+    toon_namenlijst("\nTer controle – hoofdtaken per sjabloon (meest voorkomende):",
+                    telling["gezien_hoofdtaken"], 15)
+    gelijkend = {n: a for n, a in telling["gezien_namen"].items()
+                 if any(w in normaliseer(n) for w in ("neerleg", "jaarrek", "balans"))}
+    toon_namenlijst("Ter controle – subtaken met 'neerleg', 'jaarrek' of 'balans' in de naam:",
+                    gelijkend, 25)
 
     if telling["aantal_open"] + telling["aantal_afgewerkt"] == 0:
         print("\nFOUT: geen enkele taak past bij de ingestelde filter, dus de pagina wordt "
-              "niet overschreven. Dit zijn de subtaaknamen die wél voorkomen (met aantal):")
-        for naam, n in sorted(telling["gezien_namen"].items(), key=lambda x: -x[1])[:60]:
-            print(f"    {n:5d}  {naam}")
-        sys.exit("Pas 'taaknaam' in config.ini aan (of zet 'vergelijking = bevat'), "
+              "niet overschreven.")
+        toon_namenlijst("Alle subtaaknamen die voorkomen binnen de gekozen hoofdtaak:",
+                        telling["gezien_namen"], 60)
+        sys.exit("Pas 'hoofdtaak' of 'taaknaam' in config.ini aan (of zet 'vergelijking = bevat'), "
                  "of verruim de periode ('deadline_van', 'deadline_tot', 'ophalen_vanaf').")
 
     veranderd = bewaar_geschiedenis(telling, nu)
