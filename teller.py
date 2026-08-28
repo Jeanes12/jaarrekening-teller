@@ -330,21 +330,8 @@ def bewaar_geschiedenis(telling: dict, nu: datetime) -> bool:
     return True
 
 
-def aantal_dalingen() -> int:
-    """Hoe vaak het cijfer in de geschiedenis gedaald is (bepaalt welke quote aan de beurt is)."""
-    dalingen, vorige = 0, None
-    for rij in lees_geschiedenis():
-        try:
-            huidig = int(rij.get("aantal_open", ""))
-        except ValueError:
-            continue
-        if vorige is not None and huidig < vorige:
-            dalingen += 1
-        vorige = huidig
-    return dalingen
-
-
 def lees_citaten() -> list:
+    """Alle quotes uit citaten.txt (lege regels en regels met # worden overgeslagen)."""
     citaten = []
     if CITATEN.exists():
         for regel in CITATEN.read_text(encoding="utf-8").splitlines():
@@ -353,19 +340,16 @@ def lees_citaten() -> list:
                 continue
             tekst, _, bron = regel.partition("|")
             citaten.append({"tekst": tekst.strip(), "bron": bron.strip()})
-    # Vaste, gehusselde volgorde: elke daling geeft de volgende quote, zonder herhaling
-    # tot de lijst rond is.
-    random.Random(2026).shuffle(citaten)
     return citaten
 
 
-def kies_citaat(telling: dict, inst: dict) -> dict:
+def kies_citaat(telling: dict, inst: dict, citaten: list) -> dict:
+    """Willekeurige quote voor in de pagina; de pagina zelf wisselt daarna bij elke verversing."""
     if telling["aantal_open"] == 0 and inst["citaat_bij_nul"]:
         return {"tekst": inst["citaat_bij_nul"], "bron": ""}
-    citaten = lees_citaten()
     if not citaten:
         return {"tekst": "", "bron": ""}
-    return citaten[aantal_dalingen() % len(citaten)]
+    return random.choice(citaten)
 
 
 # --------------------------------------------------------------------------- #
@@ -385,7 +369,7 @@ def ontsmet(tekst) -> str:
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def schrijf_uitvoer(telling: dict, inst: dict, citaat: dict, nu: datetime) -> None:
+def schrijf_uitvoer(telling: dict, inst: dict, citaat: dict, citaten: list, nu: datetime) -> None:
     SITE_MAP.mkdir(exist_ok=True)
 
     gegevens = {
@@ -396,6 +380,8 @@ def schrijf_uitvoer(telling: dict, inst: dict, citaat: dict, nu: datetime) -> No
         "bijgewerkt_tekst": tekst_tijd(nu),
         "citaat": citaat["tekst"],
         "citaat_bron": citaat["bron"],
+        "citaten": citaten,                              # de pagina kiest hier zelf uit bij elke verversing
+        "citaat_bij_nul": inst["citaat_bij_nul"],
         "aftel_tot": inst["aftel_tot"].isoformat() if inst["aftel_tot"] else None,
         "filter": {
             "hoofdtaak": inst["hoofdtaak"] or None,
@@ -484,8 +470,9 @@ def main() -> None:
                  "of verruim de periode ('deadline_van', 'deadline_tot', 'ophalen_vanaf').")
 
     veranderd = bewaar_geschiedenis(telling, nu)
-    citaat = kies_citaat(telling, inst)
-    schrijf_uitvoer(telling, inst, citaat, nu)
+    citaten = lees_citaten()
+    citaat = kies_citaat(telling, inst, citaten)
+    schrijf_uitvoer(telling, inst, citaat, citaten, nu)
     print(f"\nQuote van dienst: \"{citaat['tekst']}\"")
     print(f"Pagina geschreven naar {SITE_MAP / 'index.html'}"
           + (" — geschiedenis.csv bijgewerkt." if veranderd else " — cijfer ongewijzigd."))

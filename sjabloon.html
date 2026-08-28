@@ -231,7 +231,7 @@
   <p class="bijgewerkt">Laatst bijgewerkt: <span id="bijgewerkt-tekst">{{BIJGEWERKT_TEKST}}</span></p>
   <p class="waarschuwing" id="waarschuwing"></p>
 
-  <footer>Bron: AdminPulse, taak &ldquo;{{TAAKNAAM}}&rdquo; &middot; wordt elk uur opnieuw geteld</footer>
+  <footer>Bron: AdminPulse, taak &ldquo;{{TAAKNAAM}}&rdquo; &middot; wordt elk half uur opnieuw geteld</footer>
 </main>
 
 <script>
@@ -267,6 +267,18 @@
     }, 450);
   }
 
+  // Kiest bij elke verversing een willekeurige quote uit de lijst (nooit twee keer na elkaar dezelfde).
+  function wisselCitaat(d) {
+    if (Number(d.aantal_open) === 0 && d.citaat_bij_nul) { toonCitaat(d.citaat_bij_nul, ""); return; }
+    var lijst = d.citaten || [];
+    if (!lijst.length) { toonCitaat(d.citaat, d.citaat_bron); return; }
+    var keuze = lijst[Math.floor(Math.random() * lijst.length)];
+    if (lijst.length > 1 && keuze.tekst === elCitaatTekst.textContent) {
+      keuze = lijst[(lijst.indexOf(keuze) + 1 + Math.floor(Math.random() * (lijst.length - 1))) % lijst.length];
+    }
+    toonCitaat(keuze.tekst, keuze.bron);
+  }
+
   function twee(n) { return (n < 10 ? "0" : "") + n; }
 
   function tikAftel() {
@@ -300,7 +312,7 @@
       .then(function (d) {
         if (!d) return;
         toon(d.aantal_open);
-        toonCitaat(d.citaat, d.citaat_bron);
+        wisselCitaat(d);
         elTijd.textContent = d.bijgewerkt_tekst;
         bijgewerkt = new Date(d.bijgewerkt);
         if (d.aftel_tot) { aftelTot = new Date(d.aftel_tot); }
@@ -313,6 +325,7 @@
   toon(elAantal.textContent.trim());
   controleerOuderdom();
   tikAftel();
+  ververs();                                   // meteen bij het laden: verse gegevens én een nieuwe quote
   setInterval(tikAftel, 1000);
   setInterval(ververs, VERVERS_MINUTEN * 60 * 1000);
   setInterval(controleerOuderdom, 60 * 1000);
