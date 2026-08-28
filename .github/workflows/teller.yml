@@ -2,7 +2,7 @@ name: Teller jaarrekeningen bijwerken
 
 on:
   schedule:
-    # Elk uur, 7 minuten na het uur. (Wil je bv. enkel om 8u 's ochtends Belgische tijd:
+    # Twee keer per uur (om :23 en :53). (Wil je bv. enkel om 8u 's ochtends Belgische tijd:
     # zet "0 6 * * *" in de zomer of "0 7 * * *" in de winter; GitHub rekent in UTC.)
     - cron: "23,53 * * * *"
   workflow_dispatch:        # knop "Run workflow" om het handmatig te starten
@@ -27,6 +27,14 @@ jobs:
     steps:
       - name: Bestanden ophalen
         uses: actions/checkout@v4
+
+      - name: Controleren of dit de nieuwste versie van de bestanden is
+        run: |
+          git fetch origin main --quiet
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "::error::Deze run gebruikt een oudere versie van de bestanden (vermoedelijk 'Re-run' van een oude run). Start een nieuwe run via de knop 'Run workflow'."
+            exit 1
+          fi
 
       - name: Python klaarzetten
         uses: actions/setup-python@v5
