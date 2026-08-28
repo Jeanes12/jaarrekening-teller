@@ -1,0 +1,66 @@
+name: Teller jaarrekeningen bijwerken
+
+on:
+  schedule:
+    # Elk uur, 7 minuten na het uur. (Wil je bv. enkel om 8u 's ochtends Belgische tijd:
+    # zet "0 6 * * *" in de zomer of "0 7 * * *" in de winter; GitHub rekent in UTC.)
+    - cron: "7 * * * *"
+  workflow_dispatch:        # knop "Run workflow" om het handmatig te starten
+  push:
+    branches: [main]        # bij elke wijziging aan de bestanden meteen opnieuw publiceren
+
+permissions:
+  contents: write           # om geschiedenis.csv te mogen bewaren
+  pages: write              # om naar GitHub Pages te publiceren
+  id-token: write
+
+concurrency:
+  group: teller
+  cancel-in-progress: false
+
+jobs:
+  bijwerken:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.publicatie.outputs.page_url }}
+    steps:
+      - name: Bestanden ophalen
+        uses: actions/checkout@v4
+
+      - name: Python klaarzetten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Aantal ophalen uit AdminPulse en pagina maken
+        env:
+          ADMINPULSE_API_KEY: ${{ secrets.ADMINPULSE_API_KEY }}
+        run: python teller.py
+
+      - name: Geschiedenis bewaren (enkel als het cijfer veranderd is)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add geschiedenis.csv
+          if git diff --cached --quiet; then
+            echo "Cijfer ongewijzigd, niets te bewaren."
+          else
+            git commit -m "Teller: $(tail -n 1 geschiedenis.csv)"
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: GitHub Pages voorbereiden
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true      # zet GitHub Pages automatisch aan als dat nog niet gebeurd is
+
+      - name: Pagina klaarzetten
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Pagina publiceren
+        id: publicatie
+        uses: actions/deploy-pages@v4
