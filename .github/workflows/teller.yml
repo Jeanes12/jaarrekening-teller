@@ -4,7 +4,7 @@ on:
   schedule:
     # Elk uur, 7 minuten na het uur. (Wil je bv. enkel om 8u 's ochtends Belgische tijd:
     # zet "0 6 * * *" in de zomer of "0 7 * * *" in de winter; GitHub rekent in UTC.)
-    - cron: "7 * * * *"
+    - cron: "23,53 * * * *"
   workflow_dispatch:        # knop "Run workflow" om het handmatig te starten
   push:
     branches: [main]        # bij elke wijziging aan de bestanden meteen opnieuw publiceren
